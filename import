@@ -1,0 +1,15 @@
+/*Import Data from files*/
+
+options validvarname = v7;
+%let raw_file_path = "/home/username/folder/example.xlsx";
+%let raw_data_name = example_data;
+%let file_type = xlsx;
+
+%macro import;
+PROC IMPORT
+DATAFILE=&raw_file_path
+OUT=&raw_data_name
+DBMS=&file_type REPLACE ;
+*GUESSINGROWS=MAX; /*GUESSINGROWS is not a valid option for DBMS=XLSX. */
+RUN;
+%mend;
