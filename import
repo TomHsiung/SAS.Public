@@ -5,11 +5,22 @@ options validvarname = v7;
 %let raw_data_name = example_data;
 %let file_type = xlsx;
 
+/*For xlsx files*/
 %macro import;
 PROC IMPORT
 DATAFILE=&raw_file_path
 OUT=&raw_data_name
-DBMS=&file_type REPLACE ;
+DBMS=&file_type REPLACE;
 *GUESSINGROWS=MAX; /*GUESSINGROWS is not a valid option for DBMS=XLSX. */
+RUN;
+%mend;
+
+/*For csv files*/
+%macro import;
+PROC IMPORT
+DATAFILE=&raw_file_path
+OUT=&raw_data_name
+DBMS=&file_type REPLACE;
+*GUESSINGROWS=MAX;
 RUN;
 %mend;
