@@ -1,0 +1,6 @@
+%macro Logistic;
+proc logistic data = &raw_data_name;
+class &class_var;
+model &response_var = &indep_list;
+run;
+%mend;
