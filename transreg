@@ -1,0 +1,5 @@
+%macro Transreg;
+proc transreg data = &raw_data_name plots=fit(noobs);
+model identity() = spline() class();
+run;
+%mend;
