@@ -1,0 +1,345 @@
+ /*MACRO PROCEDURE PSPLINET - Plot Spline Transformation
+
+Requires: Macro DASPLINE,
+          Macro EMPTREND,
+          Macro AXISSPEC  (if PLOT =2 or 3)
+          Macro DSHIDE.
+
+   For a given continuous independent variable X and a dependent variable
+   Y, fits the Stone and Koo additive  spline  transformation  of  X  for
+   either the logistic or Cox regression models, optionally adjusting for
+   a  list  of  other independent variables.  Macro procedure DASPLINE is
+   used to generate the spline  dummy  variables  used  for  fitting  and
+   generating  predicted  values.   For  the  logistic  model  the output
+   consists of a plot of the linearizing transformation between X and the
+   log odds ratio.  For the Cox model, the log hazard  ratio  is  plotted
+   instead.   By default, the binary logistic model for Y=0,1.  For Y=0,.
+   ...,K, specify the K parameter to fit an ordinal model.
+   Knot points can be specified or DASPLINE can
+   use percentiles to  automatically  generate  knot  points.   When  the
+   logistic  model  is  being used and there are no adjustment variables,
+   probability estimates are plotted in addition to logits if PLOTPROB is
+   given.  For the ordinal logistic model, the middle intercept  term  is
+   used.   In  other words, Prob(Y>=int((k+1)/2)) is being estimated.  On
+   the plots, vertical reference lines are drawn at knot points.  If KNOT
+   is not given, the user may specify  OUTER
+   in  addition  to NK.  OUTER and SECOND are used by DASPLINE - see that
+   macro procedure for documentation.  If MODEL=LOGISTIC and ADJ  is  not
+   used,  GROUPS=g  may be specified.  This will cause the EMPTREND macro
+   procedure to be invoked to compute proportions and  logit  proportions
+   by  g  quantile groups of X.  These points will be added to the graphs
+   with a plotting symbol of X for PROC PLOT and a dotted circle for PROC
+   GPLOT.
+
+   Usage:
+
+   %PSPLINET(X,Y,MODEL=LOGISTIC(default) or COX (default if EVENT given),
+            RANGE= low TO high BY increment  range for evaluating X
+                 (default=range in data, default increment=1 if RANGE
+                  given without increment),
+            EVENT=event indicator for PROC PHGLM if COX model used,
+            K=max Y value for PROC LOGIST if ordinal logistic model used,
+            NK=number of knots to use if KNOT omitted (3,4,5, default=4),
+            OUTER=outer percentile for 1st knot if omit KNOT (DASPLINE),
+            SECOND=percentile for 2nd knot if omit KNOT      (DASPLINE),
+            KNOT= knot points  (computed by DASPLINE by default),
+            PLOT=1 (PROC PLOT) 2 (PROC GPLOT, default)
+                 3 (PROC PLOT and PROC GPLOT),
+                 4 (no graphics but produce text file with coordinates
+                    suitable for Harvard Graphics or similar software.
+                    Uses ^ as field delimiter.)                        ,
+            PLOTPROB to plot probability est. for logistic if ADJ omitted ,
+            TESTLIN=1 to fit linear and non-linear logistic model to allow
+                computation or LR statistic for linearity (for Cox, always
+                computes Wald test of linearity)                        ,
+            GROUPS= number of quantile groups (e.g. 10 for deciles),
+            PRINT to print estimates from EMPTREND if GROUPS is used,
+            ADJ=list of adjustment variables
+            DATA=input dataset (default=_LAST_),
+            SAXIS=low to high by inc y-axis specification for plotting
+                 spline transformation,
+            PAXIS=low to high by inc y-axis spec. for plotting
+                 probabilities if PLOTPROB is used,
+            XAXIS=x-axis specification,
+            SHORT=to suppress confidence intervals and knots on
+                 SAS/GRAPH for PLOTPROB output if PLOT>1,
+            NOPST=to suppress plotting of spline transformation on    ,
+                 graphics device if PLOTPROB is given and PLOT>1
+            PLOTDATA=file name for PLOT=4.  Default is PUNCH.         ,
+            FILEMODE=output mode for PLOTDATA file.  Default is MOD.
+                    May also be NEW - a new file is started.          ,
+            COMMTYPE=type of software being used to download PLOTDATA
+                 1=standard text file (default)
+                 2=Barr/Hasp var. length records with | as rec. delim.);
+
+   Note:
+
+See DASPLINE for a list of references.   Invokes
+AXISSPEC  macro  if  PLOT>1  and  XAXIS  and  SAXIS are both omitted.  If
+PLOT=2-3,references global macro variable TLEVEL  (not  an  argument)  to
+determine  extent  of titling (beyond TITLE1) and footnoting.  The values
+of TLEVEL are defined as follows:
+
+       0 : No titles or footnotes
+       1 : Stick titles, no footnotes
+       2 : Stick titles with footnotes
+       3 : Nice titles, no footnotes
+       4 : Nice titles and footnotes (default if TLEVEL undefined)
+
+   Author  : Frank E. Harrell, Jr.
+             Takima West Corporation
+             Clinical Biostatistics, Duke University Medical Center
+   Date    : 22 July 86
+   Modified: 26 Aug 86 - included logistic intercept term in est+C.I.
+                         and SAXIS option
+             23 Sep 86 - added %QUOTE for range+saxis,TESTLIN,PLOTPROB
+             24 Sep 86 - added OUTER
+             29 Sep 86 - implemented PROC GPLOT output options and GROUPS
+             04 Oct 86 - added SECOND parm
+             20 Oct 86 - fixed %EVAL that was &EVAL
+             20 Nov 86 - changed NK default to 5
+             21 Dec 86 - added more %QUOTE for saxis, fixed AXISSPEC call
+             24 Mar 87 - added XAXIS parameter
+             30 Mar 87 - added PAXIS parameter, SHORT option
+             31 Mar 87 - added NOPST option, removed =1 from y-axis label
+             19 May 87 - changed NK default to 4
+             14 Nov 87 - added PRINT option
+             19 Nov 87 - fixed MATRIX subscripting bug for K>1
+             06 Apr 88 - communicated K parameter to EMPTREND
+             05 Aug 88 - added DSHIDE
+             15 Aug 89 - added PLOT=4 and assoc. parms,bug EMPTREND invoc
+             02 May 91 - changed for SAS 6.07 to use LOGISTIC and PHREG,
+                         TESTLIN parameter handled differently for PHREG
+             09 Sep 91 - removed %INC for axisspec
+                         changed plot default to 2
+             03 Dec 91 - fixed problem with emptrend using reversed y
+             27 Apr 92 - Added QUIT after GPLOT
+             30 Apr 92 - QUIT position fixed
+             14 Nov 94 - fixed RANGE in data _m_ step
+                                                                       */
+%MACRO PSPLINET(x,y,model=LOGISTIC,range=,event=,k=1,nk=4,knot=,plot=2,
+ outer=,second=,adj=,saxis=,xaxis=,testlin=1,plotprob=0,groups=,
+ paxis=,short=0,nopst=0,print=0,PLOTDATA=PUNCH,COMMTYPE=1,FILEMODE=MOD,
+ data=_LAST_);
+%LOCAL _lastds_ x7 ninclude k2 kmid nameint;
+%GLOBAL tlevel; %IF &tlevel=  %THEN %LET tlevel=4;
+%GLOBAL _knot1_; %*Created by DASPLINE if needed;
+RUN; OPTIONS NONOTES;
+%LET adj=%SCAN(&adj,1,'"'''); %LET range=%SCAN(&range,1,'"''');
+%LET model=%UPCASE(&model);   %LET knot=%SCAN(&knot,1,'"''');
+%LET saxis=%SCAN(%QUOTE(&saxis),1,'"''');
+%LET xaxis=%SCAN(%QUOTE(&xaxis),1,'"''');
+%LET paxis=%SCAN(%QUOTE(&paxis),1,'"''');
+%LET x=%UPCASE(&x); %LET y=%UPCASE(&y);
+%IF &event^=  %THEN %LET model=COX;
+%IF &model=COX %THEN %LET k=0;
+%IF &model=COX | &adj^=  %THEN %LET groups=;
+%DSHIDE;
+%IF %LENGTH(&x)=8 %THEN %LET x7=%SUBSTR(&x,1,7); %ELSE %LET x7=&x;
+%*Find # knots if KNOT specified;
+%IF &knot^=  %THEN %DO;
+  %DO nk=1 %TO 99;
+  %IF %QUOTE(%SCAN(&knot,&nk,%STR( )))=  %THEN %GOTO nomorek;
+  %END;
+ %nomorek:%LET nk=%EVAL(&nk-1);
+ %END;
+%LET k2=%EVAL(&nk-2);
+DATA _m_;SET &data(KEEP=&x &y &event &adj); IF NMISS(OF _NUMERIC_)=0;
+DATA _m_;
+  SET _m_ END=_eof_;
+%IF &model=LOGISTIC %THEN %DO;
+        %IF &groups^=  %THEN %DO; _yorig_=&y; %END;
+        &y=&k - &y; LABEL &y="&k - &y";
+        %END;   *Handle bug in LOGISTIC;
+%IF %QUOTE(&range)=  %THEN %DO;
+        DROP _xmin_ _xmax_ _xinc_;
+        RETAIN _xmin_ 1e20 _xmax_ -1e20;
+        _xmin_=min(_xmin_,&x); _xmax_=max(_xmax_,&x);
+        IF _eof_ THEN DO;
+                _xinc_=(_xmax_-_xmin_)/
+         %IF &plot=1 %THEN 100; %ELSE %IF &plot=4 %THEN 150; %ELSE 500; ;
+                CALL SYMPUT("range",trim(left(_xmin_))||" TO "
+                        ||trim(left(_xmax_))||" BY "
+                        ||trim(left(_xinc_)));
+                END;
+        %END;
+%DASPLINE(&x,NK=&nk
+%IF &outer^=  %THEN ,OUTER=&outer;
+%IF &second^=  %THEN ,SECOND=&second;
+%IF %QUOTE(&knot)^=  %THEN ,knot1="&knot";
+ );   RUN;OPTIONS NONOTES;
+%IF %QUOTE(&knot)=  %THEN %LET knot=&_knot1_; %*_knot1_ from DASPLINE;
+%IF &adj^=  %THEN %DO;
+        PROC MEANS DATA=_m_ NOPRINT;VAR &adj;OUTPUT OUT=_est_ MEAN=&adj;
+        DATA _est_; SET _est_;
+        PUT "&adj set to mean values:" &adj;
+        %END;
+%ELSE %DO;
+        DATA _est_;
+        %END;
+%IF &model=COX %THEN %DO;   RETAIN &y 0; %END;
+
+DO &x=&range; OUTPUT; END;
+
+%IF &model=LOGISTIC %THEN DATA _tmp_; %ELSE DATA _tmp_ _est_; ;
+ SET _m_ _est_(IN=_inest_);KEEP &x &x7.1-&&x7.&k2 &y &event &adj;
+%*The next statement computes spline dummy variables defined by DASPLINE;
+&&_&x7
+%IF &model=COX %THEN %DO;
+        IF _inest_ THEN OUTPUT _est_; ELSE OUTPUT _tmp_;
+        %END;
+%IF &model=LOGISTIC %THEN %DO;
+ %IF &testlin=1 %THEN %DO;
+ PROC LOGISTIC DATA=_tmp_;
+  MODEL &y=&adj &x;
+  %END;
+ PROC LOGISTIC DATA=_tmp_;
+  MODEL &y=&adj &x &x7.1-&&x7.&k2;
+ %LET kmid=%EVAL((&k+1)/2); %*Use middle intercept for ordinal logistic;
+ OUTPUT OUT=_tmp_(KEEP=&x &y _LEVEL_ lowerprb upperprb prob splntran _se_)
+        L=lowerprb U=upperprb PROB=prob STDXBETA=_se_ XBETA=splntran;
+ DATA _tmp_;SET _tmp_; IF &y=.
+ %IF &k^=1 %THEN & _level_=&kmid; ;
+ %END;
+%ELSE %DO;
+ PROC PHREG DATA=_tmp_;
+  MODEL &y*&event(0)=&adj &x &x7.1-&&x7.&k2;
+  Linear:TEST &x7.1
+  %IF &k2>1 %THEN ,&x7.2;
+  %IF &k2>2 %THEN ,&x7.3;
+  %IF &k2>3 %THEN ,&x7.4;
+  %IF &k2>4 %THEN ,&x7.5;
+  %IF &k2>5 %THEN ,&x7.6;
+  %IF &k2>6 %THEN ,&x7.7;
+  %IF &k2>7 %THEN ,&x7.8;
+  %IF &k2>8 %THEN ,&x7.9;
+  %IF &k2>9 %THEN ,&x7.10;    ;
+ BASELINE OUT=_tmp_(KEEP=&x &y splntran _se_) COVARIATES=_est_
+        XBETA=splntran STDXBETA=_se_ / NOMEAN;
+ %END;
+
+DATA _tmp_; SET _tmp_;
+ %IF &model=COX %THEN %DO; IF &y=0; %END;
+ lower=splntran-1.96*_se_; upper=splntran+1.96*_se_; DROP _se_;
+%IF &groups^=  %THEN %DO;
+ RUN;
+ %EMPTREND(&x,_yorig_,DATA=_m_,GROUPS=&groups,LOGIT=1,PLOT=0,K=&k
+ %IF &print=1 %THEN ,PRINT=1;); %*Creates _stats_;
+ RUN;
+ %IF &plot^=4 %THEN %DO; DATA _tmp_;SET _tmp_ %END;
+ %ELSE %DO; DATA _stats_;SET %END;
+  _stats_(KEEP=&x
+ %IF &k=1 %THEN _yorig_ logit RENAME=(_yorig_=&y);
+ %ELSE _y_&kmid logit&kmid RENAME=(_y_&kmid=&y logit&kmid=logit);
+  );
+ %END;
+%IF &plot=1 | &plot=3 %THEN %DO;
+ PROC PLOT;
+  PLOT splntran*&x="." lower*&x="-" upper*&x="-"
+  %IF &groups^=  %THEN logit*&x="X";
+  /OVERLAY HREF=&knot
+  %IF %QUOTE(&saxis)^=  %THEN %DO;
+    VAXIS=&saxis
+    %END;
+  %IF %QUOTE(&xaxis)^=  %THEN %DO;
+    HAXIS=&xaxis
+    %END;
+ ;
+  LABEL splntran="Spline Transformation";
+  %IF &model=LOGISTIC & &plotprob=1 & &adj=  %THEN %DO;
+   PLOT prob*&x="." lowerprb*&x="-" upperprb*&x="-"
+   %IF &groups^=  %THEN &y*&x="X";
+   /OVERLAY HREF=&knot
+   %IF %QUOTE(&paxis)^=  %THEN VAXIS=&paxis;
+   %IF %QUOTE(&xaxis)^=  %THEN HAXIS=&xaxis; ;
+   LABEL prob=
+   %IF &k=1 %THEN "Prob(&y)"; %ELSE "Prob(&y>=&kmid)"; ;
+   %END;
+ %END;
+%IF &plot=2 | &plot=3 %THEN %DO;
+  %IF %QUOTE(&saxis)=  | %QUOTE(&xaxis)=  %THEN %DO;
+   DATA _tmp_;SET _tmp_ END=_eof_;
+   DROP _y_;_y_=lower;%AXISSPEC(VAR="&x _y_");_y_=upper; %AXISSPEC;
+   %IF &groups^=  %THEN %DO;
+    IF logit>. THEN DO;_y_=logit;%AXISSPEC;END;
+
+    %END;
+   %AXISSPEC(END=_eof_);
+   RUN;  %*Creates mac. var. SPEC1 and SPEC2;
+   %END;
+  %IF %QUOTE(&saxis)^=  %THEN %LET spec2=&saxis;
+  %IF %QUOTE(&xaxis)^=  %THEN %LET spec1=&xaxis;
+ %IF &tlevel>0 %THEN %DO;
+  %LOCAL font;%IF &tlevel>2 %THEN %LET font=TRIPLEX;
+  %ELSE %LET font=SIMPLEX;
+  %IF &plotprob=0 %THEN %DO;
+  TITLE2 H=1.6 F=&font "Estimated Spline Transformation and 95% C.I.";
+   %END;
+  %IF &adj^=  & (&tlevel=2 | &tlevel=4) %THEN %DO;
+   FOOTNOTE H=1.1 F=DUPLEX "Estimates Adjusted for:&adj"; %END;
+  %END;
+ PROC GPLOT;
+  %IF &nopst=0 %THEN %DO;
+   PLOT splntran*&x=1 lower*&x=2 upper*&x=2
+   %IF &groups^=  %THEN logit*&x=3;
+   /OVERLAY HREF=&knot
+        HAXIS=AXIS1 VAXIS=AXIS2;
+  %END;
+  AXIS1 VALUE=(H=1.2 F=duplex) LABEL=(H=1.3 F=complex) ORDER=&spec1;
+  AXIS2 VALUE=(H=1.2 F=duplex) LABEL=(H=1.3 F=complex A=90 R=0)
+   ORDER=&spec2;
+  SYMBOL1 I=JOIN L=1; SYMBOL2 I=JOIN L=2;
+  %IF &groups^=  %THEN %DO; SYMBOL3 I=NONE V=-; %END;
+  LABEL splntran=
+  %IF &model=LOGISTIC %THEN %DO;
+   %IF &k=1 %THEN %DO;
+    %IF &adj=  %THEN "logit Prob{&y}"; %ELSE "log Odds Ratio";
+    %END;
+   %ELSE %DO;
+    %IF &adj=  %THEN "logit Prob{&y>=&kmid}";
+    %ELSE "log Odds Ratio for &y>=&kmid";
+    %END;
+   %END;
+  %ELSE "log Hazard Ratio"; ;
+  %IF &model=LOGISTIC & &plotprob=1 & &adj=  %THEN %DO;
+   PLOT prob*&x=1
+   %IF &short=0 %THEN lowerprb*&x=2 upperprb*&x=2;
+   %IF &groups^=  %THEN &y*&x=3;
+   /OVERLAY
+   %IF &short=0 %THEN HREF=&knot;
+        HAXIS=AXIS1 VAXIS=AXIS3;
+   AXIS3 VALUE=(H=1.2 F=duplex) LABEL=(H=1.3 F=complex A=90 R=0)
+        %IF %QUOTE(&paxis)^=  %THEN ORDER=&paxis; ;
+   LABEL prob=
+   %IF &k=1 %THEN "Prob{&y}"; %ELSE "Prob{&y>=&kmid}"; ;
+   %END;
+  RUN;QUIT;
+  %IF &tlevel>0 %THEN %DO;
+   RUN;TITLE2;FOOTNOTE;
+   %END;
+ %END;
+%IF &plot=4 %THEN %DO;
+ DATA _NULL_;FILE &plotdata &filemode;SET _tmp_(IN=_in1_)
+ %IF &groups^=  %THEN _stats_(IN=_in2_) ; ;
+ IF _N_=1 THEN
+ PUT "&x" "^Spline Transformation^Lower C.L.^Upper C.L.^"
+   "Logit Grouped^Probability of &y^Lower C.L. Prob.^Upper C.L. Prob.^"
+   "Prob. Grouped^"
+ %IF &commtype=2 %THEN "|"; ;
+ IF _in1_ THEN
+ PUT &x "^" splntran "^" lower "^" upper "^^"
+ %IF &model=LOGISTIC & &plotprob=1 & &adj=  %THEN %DO;
+  prob "^" lowerprb "^" upperprb "^^"
+  %END;
+ %ELSE "^^^^" ;
+ %IF &commtype=2 %THEN "|"; ;
+ %IF &groups^=  %THEN %DO;
+  IF _in2_ THEN PUT &x "^^^^" logit "^"
+  %IF &model=LOGISTIC & &plotprob=1 & &adj=  %THEN  "^^^" &y "^" ;
+  %ELSE "^^^^" ;
+  %IF &commtype=2 %THEN "|"; ;
+  %END;
+ %END;
+
+RUN;OPTIONS NOTES _LAST_=&_lastds_;
+%MEND;
