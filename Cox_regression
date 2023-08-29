@@ -1,0 +1,7 @@
+%macro Cox;
+proc phreg data = &raw_data_name;
+class &class_var;
+/* The option rl is important as it tells SAS to feedback CI for HR*/
+model &length*&response_var(1) = &indep_list / rl=both;
+run;
+%mend;
