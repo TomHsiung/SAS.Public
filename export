@@ -3,7 +3,7 @@
 %let file_path = "/path/to/file";
 
 %macro Export;
-proc export data = dataset_name outfile = &file_path
+proc export data = &dataset_name outfile = &file_path
      dbms = &file_type replace;
 run;
 %mend;
