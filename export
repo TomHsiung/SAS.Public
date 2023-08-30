@@ -1,0 +1,11 @@
+%let &file_type = csv;
+%let &dataset_name = mydata;
+%let file_path = "/path/to/file";
+
+%macro Export;
+proc export data = dataset_name outfile = &file_path
+     dbms = &file_type replace;
+run;
+%mend;
+
+%Export
